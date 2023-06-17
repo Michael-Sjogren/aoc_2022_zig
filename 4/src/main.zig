@@ -4,8 +4,40 @@ const expectEqual = testing.expectEqual;
 const mem = std.mem;
 const fmt = std.fmt;
 const fs = std.fs;
+const log = std.log;
 
-pub fn main() !void {}
+pub fn main() !void {
+    var buffer: [1024 * 15]u8 = undefined;
+    const contents = try fs.cwd().readFile("input.txt", &buffer);
+    var itr = mem.splitAny(u8, contents, "\n");
+    var count: u32 = 0;
+    while (itr.next()) |line| {
+        log.debug("line({d}): {s}", .{ line.len, line });
+        if (line.len == 0) break;
+        var ranges = mem.splitAny(u8, line, ",");
+        const a = try parseRange(ranges.next() orelse return error.FailedToGetNextRange);
+        const b = try parseRange(ranges.next() orelse return error.FailedToGetNextRange);
+        if (a.isFullyOverlapping(b)) {
+            count += 1;
+        }
+    }
+
+    log.info("assignment pairs fully intersecting {d}", .{count});
+    itr.reset();
+    count = 0;
+
+    while (itr.next()) |line| {
+        if (line.len == 0) break;
+        var ranges = mem.splitAny(u8, line, ",");
+        const a = try parseRange(ranges.next() orelse return error.FailedToGetNextRange);
+        const b = try parseRange(ranges.next() orelse return error.FailedToGetNextRange);
+        if (a.isIntersecting(b)) {
+            count += 1;
+        }
+    }
+
+    log.info("assignment pairs intersecting {d}", .{count});
+}
 
 fn parseRange(range: []const u8) !Range {
     var nums = mem.splitAny(u8, range, "-");
@@ -13,8 +45,6 @@ fn parseRange(range: []const u8) !Range {
 
     const x1 = nums.next() orelse return error.FailedToGetX1;
     const x2 = nums.next() orelse return error.FailedToGetX2;
-    std.log.debug("x1 {s}", .{x1});
-    std.log.debug("x2 {s}", .{x2});
 
     return .{ .x1 = try fmt.parseInt(i32, x1, 10), .x2 = try fmt.parseInt(i32, x2, 10) };
 }
@@ -30,8 +60,8 @@ const Range = struct {
     }
 
     // tests if either range is intersecting
-    pub fn isOverlapping(self: Range, b: Range) bool {
-        return (b.x2 - self.x1) * (b.x1 - self.x2) >= 0;
+    pub fn isIntersecting(self: Range, b: Range) bool {
+        return (self.x1 - b.x2) * (b.x1 - self.x2) >= 0;
     }
 };
 
@@ -52,4 +82,14 @@ test "is range overlapping" {
     a = .{ .x1 = 6, .x2 = 6 };
     b = .{ .x1 = 4, .x2 = 6 };
     try expectEqual(true, a.isFullyOverlapping(b));
+}
+
+test "is intersecting" {
+    var a: Range = .{ .x1 = 6, .x2 = 6 };
+    var b: Range = .{ .x1 = 4, .x2 = 6 };
+    try expectEqual(true, a.isIntersecting(b));
+
+    a = .{ .x1 = -55, .x2 = 3 };
+    b = .{ .x1 = 4, .x2 = 6 };
+    try expectEqual(false, a.isIntersecting(b));
 }
