@@ -1,2 +1,2 @@
-# aoc_2023_zig
+# aoc_2022_zig
 advent of code in zig
