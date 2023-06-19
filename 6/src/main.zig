@@ -6,15 +6,9 @@ const testing = std.testing;
 pub fn main() !void {
     var buffer: [1024 * 10]u8 = undefined;
 
-    const contents = try fs.cwd().readFile("input-test.txt", &buffer);
-    var slice: []const u8 = contents;
-    for (contents, 0..) |_, i| {
-        if (try isSequenceUnique(slice[0..4])) {
-            log.debug("first marker after {d}", .{i});
-            break;
-        }
-        slice = contents[i + 4 ..];
-    }
+    const contents = try fs.cwd().readFile("input.txt", &buffer);
+    const start = try findFirstMarker(contents);
+    log.debug("first marker after character {d}", .{start});
 }
 
 fn isSequenceUnique(slice: []const u8) !bool {
@@ -25,13 +19,37 @@ fn isSequenceUnique(slice: []const u8) !bool {
         const index: u8 = l - 'a';
         var current: *u32 = &alphabet[index];
         current.* += 1;
-    }
-
-    for (alphabet) |val| {
-        if (val >= 2) {
+        if (current.* >= 2) {
             return false;
         }
     }
-
     return true;
+}
+
+fn findFirstMarker(dataStream: []const u8) !usize {
+    var slice: []const u8 = dataStream;
+    for (dataStream, 0..) |_, i| {
+        if (try isSequenceUnique(slice[0..4])) {
+            return i + 4;
+        }
+        slice = dataStream[i + 1 ..];
+    }
+
+    return error.FailedToFindAMarker;
+}
+
+test "test unique sequence" {
+    try testing.expectEqual(true, try isSequenceUnique("abcd"));
+
+    try testing.expectEqual(false, try isSequenceUnique("abca"));
+}
+
+test "find first market" {
+    try testing.expectEqual(@as(usize, 5), try findFirstMarker("bvwbjplbgvbhsrlpgdmjqwftvncz"));
+
+    try testing.expectEqual(@as(usize, 6), try findFirstMarker("nppdvjthqldpwncqszvftbrmjlhg"));
+
+    try testing.expectEqual(@as(usize, 10), try findFirstMarker("nznrnfrfntjfmvfwmzdfjlvtqnbhcprsg"));
+
+    try testing.expectEqual(@as(usize, 11), try findFirstMarker("zcfzfwzzqfrljwzlrfnpqdbhtmscgvjw"));
 }
