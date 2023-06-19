@@ -93,6 +93,7 @@ pub fn main() !void {
                 };
 
                 const file_name = fileInfo.next() orelse return error.CouldNotReadFileName;
+                currentDirSize += size;
                 log.debug("-[{d}]\t {s} (file, size={d})", .{ depth, file_name, size });
             },
         }
