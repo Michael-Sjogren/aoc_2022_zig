@@ -7,7 +7,7 @@ const ArrayList = std.ArrayList;
 const Crates = ArrayList(ArrayList(u8));
 pub fn main() !void {
     var buffer: [1024 * 10]u8 = undefined;
-    const contents = try fs.cwd().readFile("input.txt", &buffer);
+    const contents = try fs.cwd().readFile("input-test.txt", &buffer);
     var lineItr = mem.splitAny(u8, contents, "\n");
     const alloc = std.heap.page_allocator;
     // get column count
@@ -96,6 +96,7 @@ pub fn getColumnCount(line: []const u8) u32 {
 }
 
 pub fn moveCrate(from: usize, to: usize, amount: u32, crates: *Crates) !void {
+    var movedCount: u32 = 0;
     for (0..amount) |_| {
         const fromVal = crates.items[from].popOrNull() orelse {
             log.debug("breaking empty column", .{});
@@ -104,5 +105,9 @@ pub fn moveCrate(from: usize, to: usize, amount: u32, crates: *Crates) !void {
         log.debug("moving ({d}) {c} to ({d})", .{ from + 1, fromVal, to + 1 });
 
         try crates.items[to].append(fromVal);
+        movedCount += 1;
     }
+    var stack: *ArrayList(u8) = &crates.items[to];
+
+    std.mem.rotate(u8, stack.items, 1);
 }
