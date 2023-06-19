@@ -9,12 +9,13 @@ pub fn main() !void {
     const contents = try fs.cwd().readFile("input.txt", &buffer);
     const start = try findFirstMarker(contents);
     log.debug("first marker after character {d}", .{start});
+
+    const msg_start = try findFirstMessageMarker(contents);
+    log.debug("first message marker after character {d}", .{msg_start});
 }
 
 fn isSequenceUnique(slice: []const u8) !bool {
-    if (slice.len != 4) return error.MustBeFourInLength;
     var alphabet: [26]u32 = [_]u32{0} ** 26;
-    log.debug("slice {s}", .{slice});
     for (slice) |l| {
         const index: u8 = l - 'a';
         var current: *u32 = &alphabet[index];
@@ -38,13 +39,25 @@ fn findFirstMarker(dataStream: []const u8) !usize {
     return error.FailedToFindAMarker;
 }
 
+fn findFirstMessageMarker(dataStream: []const u8) !usize {
+    var slice: []const u8 = dataStream;
+    for (dataStream, 0..) |_, i| {
+        if (try isSequenceUnique(slice[0..14])) {
+            return i + 14;
+        }
+        slice = dataStream[i + 1 ..];
+    }
+
+    return error.FailedToFindAMessageMarker;
+}
+
 test "test unique sequence" {
     try testing.expectEqual(true, try isSequenceUnique("abcd"));
 
     try testing.expectEqual(false, try isSequenceUnique("abca"));
 }
 
-test "find first market" {
+test "find first packet marker" {
     try testing.expectEqual(@as(usize, 5), try findFirstMarker("bvwbjplbgvbhsrlpgdmjqwftvncz"));
 
     try testing.expectEqual(@as(usize, 6), try findFirstMarker("nppdvjthqldpwncqszvftbrmjlhg"));
@@ -52,4 +65,16 @@ test "find first market" {
     try testing.expectEqual(@as(usize, 10), try findFirstMarker("nznrnfrfntjfmvfwmzdfjlvtqnbhcprsg"));
 
     try testing.expectEqual(@as(usize, 11), try findFirstMarker("zcfzfwzzqfrljwzlrfnpqdbhtmscgvjw"));
+}
+
+test "find start of message marker" {
+    try testing.expectEqual(@as(usize, 19), try findFirstMessageMarker("mjqjpqmgbljsphdztnvjfqwrcgsmlb"));
+
+    try testing.expectEqual(@as(usize, 23), try findFirstMessageMarker("bvwbjplbgvbhsrlpgdmjqwftvncz"));
+
+    try testing.expectEqual(@as(usize, 23), try findFirstMessageMarker("nppdvjthqldpwncqszvftbrmjlhg"));
+
+    try testing.expectEqual(@as(usize, 29), try findFirstMessageMarker("nznrnfrfntjfmvfwmzdfjlvtqnbhcprsg"));
+
+    try testing.expectEqual(@as(usize, 26), try findFirstMessageMarker("zcfzfwzzqfrljwzlrfnpqdbhtmscgvjw"));
 }
