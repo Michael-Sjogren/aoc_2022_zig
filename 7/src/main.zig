@@ -52,7 +52,7 @@ pub fn main() !void {
         path.deinit();
     }
 
-    const input = try std.fs.cwd().readFileAlloc(alloc, "input-test.txt", 1024 * 15);
+    const input = try std.fs.cwd().readFileAlloc(alloc, "input.txt", 1024 * 15);
 
     var itr = std.mem.splitAny(u8, input, "\n");
     var fullPath: []u8 = "";
@@ -69,7 +69,8 @@ pub fn main() !void {
         switch (command) {
             // discovered new sibling directory when listing in pwd
             .dir => {
-                try path.append(line[5..]);
+                try path.append(line[4..]);
+
                 var dirPath = try std.mem.join(alloc, "/", path.items);
                 try currentDir.dirs.append(dirPath);
                 _ = path.pop();
@@ -89,8 +90,6 @@ pub fn main() !void {
                 fullPath = try std.mem.join(alloc, "/", path.items);
 
                 currentDir = try getDir(&directories, alloc, fullPath, parent);
-
-                std.log.debug("cd {s}", .{currentDir.path});
             },
             // detected command to list all files
             .list => {},
@@ -105,10 +104,56 @@ pub fn main() !void {
                 var file = try currentDir.files.getOrPut(file_name);
                 file.value_ptr.*.name = file_name;
                 file.value_ptr.*.size = size;
-                currentDir.size += size;
             },
         }
     }
+    const total_size = calcDirSize(&directories, directories.getPtr("root"));
+    _ = total_size;
+
+    var dirItr = directories.valueIterator();
+
+    var sum: u32 = 0;
+    while (dirItr.next()) |dir| {
+        log.debug("{s} {d}", .{ dir.path, dir.size });
+        if (dir.size <= 100000) {
+            sum += dir.size;
+        }
+        for (dir.dirs.items) |siblings| {
+            log.debug("\t- {s}", .{siblings});
+        }
+        var filesItr = dir.files.valueIterator();
+        while (filesItr.next()) |file| {
+            log.debug("\t- {s}", .{file.name});
+        }
+    }
+
+    log.debug("sum: {d}", .{sum});
+}
+
+fn calcDirSize(dirs: *std.hash_map.StringHashMap(Dir), nextDir: ?*Dir) u32 {
+    var currentDir: *Dir = undefined;
+    if (nextDir) |dir| {
+        currentDir = dir;
+        if (currentDir.size > 0) {
+            return currentDir.size;
+        }
+    } else {
+        return 0;
+    }
+
+    var fileSizeTotal: u32 = 0;
+    var filesItr = currentDir.files.valueIterator();
+    while (filesItr.next()) |file| {
+        fileSizeTotal += file.size;
+    }
+
+    currentDir.size += fileSizeTotal;
+
+    for (currentDir.dirs.items) |dir| {
+        currentDir.size += calcDirSize(dirs, dirs.getPtr(dir));
+    }
+
+    return currentDir.size;
 }
 
 fn getDir(directories: *std.hash_map.StringHashMap(Dir), alloc: anytype, fullPath: []const u8, parent: []const u8) !*Dir {
