@@ -107,23 +107,36 @@ pub fn main() !void {
             },
         }
     }
-    const total_size = calcDirSize(&directories, directories.getPtr("root"));
-    _ = total_size;
+    const total_size_used = calcDirSize(&directories, directories.getPtr("root"));
 
     var dirItr = directories.valueIterator();
+    const total_diskspace: u32 = 70000000;
+    const min_required_space: u32 = 30000000;
 
+    // part 1
+    log.debug("part 1", .{});
     var sum: u32 = 0;
     while (dirItr.next()) |dir| {
-        log.debug("{s} {d}", .{ dir.path, dir.size });
         if (dir.size <= 100000) {
             sum += dir.size;
         }
-        for (dir.dirs.items) |siblings| {
-            log.debug("\t- {s}", .{siblings});
-        }
-        var filesItr = dir.files.valueIterator();
-        while (filesItr.next()) |file| {
-            log.debug("\t- {s}", .{file.name});
+    }
+
+    log.debug("sum: {d}", .{sum});
+
+    // part 2
+    log.debug("part 2", .{});
+
+    sum = 0;
+    dirItr = directories.valueIterator();
+    const space_left: i64 = total_diskspace - total_size_used;
+    log.debug("space left {d}", .{space_left});
+
+    while (dirItr.next()) |dir| {
+        const freed_space: i64 = space_left + dir.size;
+        log.debug("freed {d}", .{freed_space});
+        if (freed_space >= min_required_space or freed_space <= sum) {
+            sum = dir.size;
         }
     }
 
